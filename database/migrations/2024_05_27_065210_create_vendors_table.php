@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->integer('user_id');
             $table->string('firm_name');
+            $table->string('mng_name');
+            $table->string('mng_contact');
+            $table->string('mng_email');
             $table->string('acc_name');
             $table->string('acc_contact');
             $table->string('acc_email');
