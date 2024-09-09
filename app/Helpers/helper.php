@@ -17,8 +17,9 @@ use App\Mail\PasswordSend;
 use App\Models\Attachment;
 
     // Saving Tags
-    function save_tags($tags, $model_id,$model) {
-            if(!empty($tags)){
+    function save_tags($tags, $model_id,$model) 
+    {
+        if(!empty($tags)){
             $tagz=explode(",",$tags);
             foreach($tagz as $singletag) {
                 $tag = new Tag();
@@ -27,50 +28,57 @@ use App\Models\Attachment;
                 $tag->tag = $singletag;
                 $tag->status = 1;
                 $tag->save();
-                }
             }
         }
+    }
+
     // Getting User Id
     function get_user_details($user_id) {
     	return User::where('id',$user_id)->first();
     }
+
     // Registering User
-    function registering_user($request){
-                try {
-                $registerUserData = $request->validate([
-                    'name' => 'required|string',
-                    'email' => 'required|string|email|unique:users'
-                ]);
-                $user = User::create([
-                    'name' => $registerUserData['name'],
-                    'email' => $registerUserData['email'],
-                    'role' => $request->role,
-                    'password' => Hash::make(generateRandomPassword(12)),
-                ]);
-                $user_role=Role::where('id',$user->role)->first()->name;
-                $message="Dear user This is your Password ".generateRandomPassword(12);
-                // $user->notify(new PasswordNotification($message));
-                Mail::to($registerUserData['email'])->send(new PasswordSend($message));
-                activity()->causedBy(auth()->user())->log($request->name.' as '.$user_role);
-                if($request->image){
+    function registering_user($request)
+    {
+        try {
+            $registerUserData = $request->validate([
+                'name' => 'required|string',
+                'email' => 'required|string|email|unique:users'
+            ]);
+            $user = User::create([
+                'name' => $registerUserData['name'],
+                'email' => $registerUserData['email'],
+                'role' => $request->role,
+                'password' => Hash::make(generateRandomPassword(12)),
+            ]);
+            $user_role=Role::where('id',$user->role)->first()->name;
+            $message="Dear user This is your Password ".generateRandomPassword(12);
+            //$user->notify(new PasswordNotification($message));
+            // Mail::to($registerUserData['email'])->send(new PasswordSend($message));
+            activity()->causedBy(auth()->user())->log($request->name.' as '.$user_role);
+            if($request->image){
                 saveImage($request->image,$user->id,'App\Models\User','users','Employee Photo');
-                }
-                return [
-                    'message' => 'User Created',
-                    'data' => $user,
-                    'token' =>$user->createToken($user->name.'-AuthToken')->plainTextToken
-                ];
-                }catch (\Illuminate\Validation\ValidationException $e) {
-                    return [
-                        'error' => $e->validator->errors()->first(),
-                    ];
-                } catch (\Exception $e) {
-                    // Other unexpected errors
-                    return [
-                        'error' => 'Something went wrong.',
-                    ];
-                }
+            }
+            return [
+                'status' => 'success',
+                'message' => 'User Created',
+                'data' => $user,
+                'token' =>$user->createToken($user->name.'-AuthToken')->plainTextToken
+            ];
+        }catch (\Illuminate\Validation\ValidationException $e) {
+            return [
+                'status'=> 'error',
+                'message' => $e->validator->errors()->first(),
+            ];
+        } catch (\Exception $e) {
+            // Other unexpected errors
+            return [
+                'status' => 'error',
+                'message' => 'Failed to Add User. ' . $e->getMessage(),
+            ];
         }
+    }
+
     // Generating Random Password
     function generateRandomPassword($length = 10) {
         $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()-_=+';

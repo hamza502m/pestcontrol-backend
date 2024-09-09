@@ -215,11 +215,15 @@ class ItemsRepository
         }
     }
     // Finding all Item Units
-    public function get_item_units($request)
+    public function get_item_units($request,$type)
     {
-        $units=Units::with('items')->orderBy('id', 'DESC')->paginate(isset($request->limit)?$request->limit:50);
-         if($units){return response()->json(['data' => $units]);}
-         else{return response()->json(['data' => 'No data']);}
+        if($type!=null && $type=='all'){
+            $units=Units::orderBy('id', 'DESC')->get();
+        }else{
+            $units=Units::orderBy('id', 'DESC')->paginate(isset($request->limit)?$request->limit:50);
+        }
+        if($units){return response()->json(['data' => $units]);}
+        else{return response()->json(['data' => 'No data']);}
     }
 
     // Finding single Item unit

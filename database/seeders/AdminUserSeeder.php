@@ -18,30 +18,26 @@ class AdminUserSeeder extends Seeder
     {
         $records = [
             [
-            'name' => 'OZ Tech',
-            'email' => 'admin@gmail.com',
-            'password' => bcrypt('12345678'),
-            'role' => '1',
-            'status' => '1',
-            'email_verified_at'=> now()
+                'name' => 'OZ Tech',
+                'email' => 'admin@gmail.com',
+                'password' => bcrypt('12345678'),
+                'role' => '1',
+                'status' => '1',
+                'email_verified_at'=> now()
             ]
-         ];
-
-        foreach ($records as $key => $record)
+        ];
+        foreach ($records as $record)
         {
-            $module = User::where('email',$record['email'])->first();
-            if ($module)
-            {
-                unset($records[$key]);
+            $user = User::where('email', $record['email'])->first();
+            if (!$user) {
+                $user = User::create($record);
+                
+                $role = Role::where('name', 'Admin')->first();
+                $permissions = Permission::pluck('id')->all();
+                
+                $role->syncPermissions($permissions);
+                $user->assignRole([$role->id]);
             }
-        if(!empty($record)) {
-            $user = User::create($record);
-            $role = Role::where('name' , 'Admin')->first();
-            $permissions = Permission::pluck('id','id')->all();
-            $role->syncPermissions($permissions);
-            $user->assignRole([$role->id]);
         }
-		}
-
     }
 }

@@ -17,7 +17,7 @@ class Client extends Model
         'phone_number',
         'mobile_number',
         'industry_name',
-        'reference',
+        'employee_id',
         'address',
         'city',
         'latitude',

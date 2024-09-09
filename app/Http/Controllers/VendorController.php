@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Notifications\AppNotification;
 use App\Notifications\PasswordNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class VendorController extends Controller
 {
@@ -15,14 +16,12 @@ class VendorController extends Controller
      */
     public function index()
     {
-    
         $vendors = Vendor::with('user')->orderBy('id', 'DESC')->paginate(isset($request->limit)?$request->limit:50);
-             if($vendors){
-                    return response()->json(['data' => $vendors]);
-                 }
-             else{
-                    return response()->json(['data' => 'No data']);
-                 }
+        if($vendors){
+            return response()->json(['data' => $vendors]);
+        }else{
+            return response()->json(['data' => 'No data']);
+        }
     }
 
     /**
@@ -44,9 +43,13 @@ class VendorController extends Controller
      */
     public function store(Request $request)
     {
+        try {
+            DB::beginTransaction();
+            $request->merge(['role' => 6]);
             $user=registering_user($request);
-            if(isset($user['error'])){
-             return response()->json(['error' => $user['error']], 422);
+            if($user['status']=='error'){
+                DB::rollBack();
+                return response()->json(['status'=>'error', 'message' => $user['message']], 422);
             }
             $vendor = new Vendor();
             $vendor->user_id=$user['data']->id;
@@ -61,11 +64,23 @@ class VendorController extends Controller
             $vendor->save();
             $message="A Vendor has been added into system by ".$user['data']->name;
             // auth()->user()->notify(new PasswordNotification($message));
-            auth()->user()->notify(new AppNotification($message));
+            // auth()->user()->notify(new AppNotification($message));
+            DB::commit();
             return response()->json([
-                'message' => 'Vendor Added',
+                'status' => 'success',
+                'message' => 'Vendor Added Successfully',
                 'data' => $user['data']
             ]);
+        }catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'=>'error','message' => $e->validator->errors()->first(),
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error','message' => 'Failed to Add Vendor. ' .$e->getMessage()],500);
+        }
+
     }
 
     /**

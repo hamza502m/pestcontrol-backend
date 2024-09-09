@@ -12,6 +12,7 @@ use Illuminate\Database\QueryException;
 use Spatie\Activitylog\Models\Activity;
 use App\Notifications\AppNotification;
 use App\Jobs\ClientRegisterjob;
+use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
@@ -20,33 +21,22 @@ class ClientController extends Controller
      */
     public function index()
     {   
-
         $client=Client::with('jobs','tags','user','user.addressess')->orderBy('id', 'DESC')->paginate(isset($request->limit)?$request->limit:50);
-            if($client){
-                return response()->json(['data' => $client]);
-            }
-            else{
-                return response()->json(['data' => 'No data']);
-            }
+        if($client){
+            return response()->json(['data' => $client]);
+        }else{
+            return response()->json(['data' => 'No data']);
+        }
     }
+
     public function singleClint($id)
     {   
-
         $client=Client::where('id',$id)->with('jobs','tags','user','user.addressess')->first();
-            if($client){
-                return response()->json(['data' => $client]);
-            }
-            else{
-                return response()->json(['data' => 'No data']);
-            }
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        if($client){
+            return response()->json(['data' => $client]);
+        }else{
+            return response()->json(['data' => 'No data']);
+        }
     }
 
     /**
@@ -54,15 +44,18 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-
-    try {
+        try {
+            DB::beginTransaction();
             $clientDetail = $request->validate([
                 'email' => 'required|string|email|unique:clients'
             ]);
+            $request->merge(['role' => 5]);
             $user=registering_user($request);
-            if(isset($user['error'])){
-             return response()->json(['error' => $user['error']], 422);
+            if($user['status']=='error'){
+                DB::rollBack();
+                return response()->json(['status'=>'error', 'message' => $user['message']], 422);
             }
+
             $clientDetail = new Client();
             $clientDetail->user_id=$user['data']->id;
             $clientDetail->full_name=$request->name;
@@ -71,35 +64,38 @@ class ClientController extends Controller
             $clientDetail->phone_number=$request->phone_number;
             $clientDetail->mobile_number=$request->mobile_number;
             $clientDetail->industry_name=$request->industry_name;
-            $clientDetail->reference=$request->reference;
+            $clientDetail->employee_id=$request->employee_id;
             $clientDetail->address=$request->address;
             $clientDetail->city=$request->city;
             $clientDetail->latitude=$request->latitude;
             $clientDetail->longitude=$request->longitude;
             $clientDetail->save();
+
             if($clientDetail){
                 $this->tags($request->tags, $clientDetail->id);
             }  
-            dispatch(new ClientRegisterjob($clientDetail));
-            auth()->user()->notify(new AppNotification($clientDetail));
+
+            // dispatch(new ClientRegisterjob($clientDetail));
+            // auth()->user()->notify(new AppNotification($clientDetail));
             activity()->performedOn(Client::find($clientDetail->id))->log('Client added by name of '.$clientDetail->full_name);
-        // $user=User::where('id',$request->user_id)->where('clientDetail')->first();
-        return response()->json([
+            // $user=User::where('id',$request->user_id)->where('clientDetail')->first();
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
                 'message' => 'Client Created',
                 'data' => $clientDetail
             ]);
-            }catch (\Illuminate\Validation\ValidationException $e) {
-            // Validation error occurred
+        }catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
             return response()->json([
-                'error' => $e->validator->errors()->first(),
+                'status'=>'error','message' => $e->validator->errors()->first(),
             ], 422);
         } catch (\Exception $e) {
-            // Other unexpected errors
-            return response()->json([
-                'error' => 'Something went wrong.',
-            ], 500);
+            DB::rollBack();
+            return response()->json(['status' => 'error','message' => 'Failed to Add Client. ' .$e->getMessage()],500);
         }
     }
+
     // For Saving Tags
     // Code by Umair 
     // 15/05/2024
@@ -116,29 +112,32 @@ class ClientController extends Controller
             }
         }
     }
+
     public function client_addressess(Request $request){
-            $i=0;
-            foreach($request->addresses as $address) {   
+        // $i=0;
+        // foreach($request->addresses as $address) {   
             $client_address = new Addresses();
-            $client_address->user_id=$address['user_id'];
-            $client_address->address=$address['address'];
-            $client_address->city=$address['city'];
-            $client_address->lat=$address['lat'];
-            $client_address->lang=$address['lang'];
+            $client_address->user_id=$request->user_id;
+            $client_address->address=$request->address;
+            $client_address->city=$request->city;
+            $client_address->lat=$request->lat;
+            $client_address->lang=$request->lang;
             $client_address->save();
-            $i++;
-            }
-            return response()->json([
-                'message' => 'Addresses Have been added'
-            ]);
+            // $i++;
+        // }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Address Have been added'
+        ]);
     }
+
     public function markasRead($id)
     {
-     if($id){
-        auth()->user()->notifications->where('id',$id)->markAsRead();
-        return response()->json([
-            'message'=>'read'
-        ]);
-     }
+        if($id){
+            auth()->user()->notifications->where('id',$id)->markAsRead();
+            return response()->json([
+                'message'=>'read'
+            ]);
+        }
     }
 }

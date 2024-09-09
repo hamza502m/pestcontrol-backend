@@ -9,6 +9,7 @@ use App\Models\EmployeeInsurance;
 use App\Models\EmployeeOtherInfo;
 use App\Notifications\AppNotification;
 use App\Events\ActivityPerformed;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeRepository
 {
@@ -16,28 +17,35 @@ class EmployeeRepository
 
     public function all($request)
     {
-         $employee=User::with('employee_details','attachments','employee_details.employee_insurance','employee_details.employee_other_info')->orderBy('id', 'DESC')->paginate(isset($request->limit)?$request->limit:50);
-            if($employee){
-                return response()->json(['data' => $employee]);
-            }
-            else{
-                return response()->json(['data' => 'No data']);
-            }
+        $employee=User::with('employee_details','attachments','employee_details.employee_insurance','employee_details.employee_other_info')->where('role',7)->orderBy('id', 'DESC')->paginate(isset($request->limit)?$request->limit:50);
+        if($employee){
+            return response()->json(['data' => $employee]);
+        }else{
+            return response()->json(['data' => 'No data']);
+        }
     }
 
     public function find($id)
     {
-         $employee=User::where('id',$id)->with('employee_details','attachments','employee_details.employee_insurance','employee_details.employee_other_info','stock_assigned')->first();
-            if($employee){return response()->json(['data' => $employee]);}
-            else{return response()->json(['data' => 'No data']);}
+        $employee=User::where('id',$id)->with('employee_details','attachments','employee_details.employee_insurance','employee_details.employee_other_info','stock_assigned')->where('role',7)->first();
+        if($employee){
+            return response()->json(['data' => $employee]);
+        }else{
+            return response()->json(['data' => 'No data']);
+        }
     }
 
     public function create($request)
     {
+        try {
+            DB::beginTransaction();
+            $request->merge(['role' => 7]);
             $user=registering_user($request);
-            if(isset($user['error'])){
-             return response()->json(['error' => $user['error']], 422);
+            if($user['status']=='error'){
+                DB::rollBack();
+                return response()->json(['status'=>'error', 'message' => $user['message']], 422);
             }
+
             $employee = new Employee();
             $employee->user_id=$user['data']->id;
             $employee->eid_no=$request->eid_no;
@@ -48,17 +56,25 @@ class EmployeeRepository
             $employee->passport_start=$request->passport_start;
             $employee->passport_expiry=$request->passport_expiry;
             $employee->save();
+
             if($employee){
-            $this->employee_insurance($employee->id,$request);
-            $this->employee_other_info($employee->id,$request);
+                $this->employee_insurance($employee->id,$request);
+                $this->employee_other_info($employee->id,$request);
             }
 
             $message="A employee has been added into system by ".$user['data']->name;
-            auth()->user()->notify(new AppNotification($message));
+            // auth()->user()->notify(new AppNotification($message));
+            
+            DB::commit();
             return response()->json([
-                'message' => 'Employee Added',
+                'status' => 'success',
+                'message' => 'Employee Added Successfully',
                 'data' => $user['data']
             ]);
+        }catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error','message' => 'Failed to Add Employee. ' .$e->getMessage()],500);
+        }
     }
     public function employee_insurance($emp_id,$request)
     {

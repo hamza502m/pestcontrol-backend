@@ -2,18 +2,7 @@
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Http\Controllers\UserAuthController;
-use App\Http\Controllers\ClientController;
-use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\QuotesController;
-use App\Http\Controllers\ContractController;
-use App\Http\Controllers\JobController;
-use App\Http\Controllers\ServicesController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\SuppliersController;
-use App\Http\Controllers\SettingController;
-use App\Http\Controllers\ItemsController;
+use App\Http\Controllers\{UserAuthController,ClientController,PermissionController,EmployeeController,QuotesController,ContractController,JobController,ServicesController,VendorController,SuppliersController,SettingController,ItemsController};
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,17 +16,16 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-
 Route::post('register',[UserAuthController::class,'register']);
 Route::post('login',[UserAuthController::class,'login']);
-Route::post('logout',[UserAuthController::class,'logout'])
-  ->middleware('auth:sanctum');
+Route::post('logout',[UserAuthController::class,'logout'])->middleware('auth:sanctum');
+
 Route::middleware('auth:sanctum')->group(function () {
   // Clients
-  Route::post('add-client',[ClientController::class,'store']);
+  Route::post('add_client',[ClientController::class,'store']);
   Route::post('add_client_addressess',[ClientController::class,'client_addressess']);
-  Route::get('getclients',[ClientController::class,'index']);
-  Route::get('singleClint/{id}',[ClientController::class,'singleClint']);
+  Route::get('get_clients',[ClientController::class,'index']);
+  Route::get('single_client/{id}',[ClientController::class,'singleClint']);
   // Permissions
   Route::post('add-permission',[PermissionController::class,'store']);
   Route::post('update-permission/{id}',[PermissionController::class,'updatePermission']);
@@ -56,12 +44,12 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::post('job-status',[JobController::class,'job_status']);
 
   // Employee
-  Route::post('add-employee',[EmployeeController::class,'store']);
+  Route::post('add_employee',[EmployeeController::class,'store']);
   Route::post('assigning-stock',[EmployeeController::class,'assigning_stock']);
   Route::get('get_employees',[EmployeeController::class,'index']);
   Route::get('single_employee/{id}',[EmployeeController::class,'single_employee']);
   // Vendors
-  Route::post('add-vendor',[VendorController::class,'store']);
+  Route::post('add_vendor',[VendorController::class,'store']);
   Route::get('get_vendors',[VendorController::class,'index']);
   Route::get('single_vendor/{id}',[VendorController::class,'single_vendor']);
   // Service of Agreements 
@@ -110,7 +98,7 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::get('get_tem_type/{id}',[ItemsController::class,'get_item_type']);
   // Item  Units
   Route::post('add-units',[ItemsController::class,'store_item_unit']);
-  Route::get('all_units',[ItemsController::class,'get_item_units']);
+  Route::get('all_units/{type?}',[ItemsController::class,'get_item_units']);
   Route::get('get_units/{id}',[ItemsController::class,'get_item_unit']);
   // Service Report 
   Route::post('create-service-report',[ServicesController::class,'service_report']);

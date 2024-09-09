@@ -60,9 +60,9 @@ class ItemsController extends Controller
     {
         return $this->Items->store_item_unit($request);
     }
-    public function get_item_units(Request $request)
+    public function get_item_units(Request $request,$type=null)
     {
-        return $this->Items->get_item_units($request);
+        return $this->Items->get_item_units($request,$type);
     }
     public function get_item_unit($id)
     {
